@@ -4,7 +4,7 @@ import {TranscriptionService} from './TranscriptionService';
 import {KnowledgeBaseService} from './KnowledgeBaseService';
 import {TakeoverService} from './TakeoverService';
 import {APP_CONFIG} from '../config';
-import {AgentStatus, TakeoverState, TranscriptEntry} from '../types';
+import {AgentStatus, TakeoverState, TranscriptEntry, TranscriptionLanguage, SupportedLanguage} from '../types';
 
 type StatusCallback = (status: AgentStatus) => void;
 type TranscriptCallback = (entries: TranscriptEntry[], partial: string) => void;
@@ -18,6 +18,7 @@ let takeoverStateCallbacks: TakeoverStateCallback[] = [];
 let activeConversationId: string | null = null;
 let transcriptEntries: TranscriptEntry[] = [];
 let partialTranscript: string = '';
+let detectedLanguage: string = 'en';
 
 export function onStatusChange(callback: StatusCallback): () => void {
   statusCallbacks.push(callback);
@@ -95,13 +96,30 @@ export async function startPassiveListening(): Promise<boolean> {
 
     // Start transcription
     const transcription = TranscriptionService.getInstance();
+
+    // Get language preference from settings
+    const preferredLanguage = await kbService.getSetting('preferredLanguage') || 'auto';
+    transcription.setLanguage(preferredLanguage as TranscriptionLanguage);
+
+    // Configure Deepgram API key
+    const deepgramApiKey = await kbService.getSetting('deepgramApiKey');
+    if (deepgramApiKey) {
+      transcription.configure(deepgramApiKey);
+    }
+
     await transcription.startListening({
-      onPartialResult: (text, timestamp) => {
+      onPartialResult: (text, timestamp, language) => {
         partialTranscript = text;
+        if (language) {
+          detectedLanguage = language;
+        }
         notifyTranscriptUpdate();
       },
-      onFinalResult: async (text, timestamp) => {
+      onFinalResult: async (text, timestamp, language) => {
         partialTranscript = '';
+        if (language) {
+          detectedLanguage = language;
+        }
 
         if (activeConversationId) {
           const entryId = await kbService.addTranscriptEntry(
@@ -234,6 +252,61 @@ export function getTranscriptEntries(): TranscriptEntry[] {
   return [...transcriptEntries];
 }
 
+export function getDetectedLanguage(): string {
+  return detectedLanguage;
+}
+
+export async function setTranscriptionLanguage(language: TranscriptionLanguage): Promise<void> {
+  const transcription = TranscriptionService.getInstance();
+  transcription.setLanguage(language);
+
+  // Save to settings
+  const kbService = KnowledgeBaseService.getInstance();
+  await kbService.saveSetting('preferredLanguage', language);
+
+  // If currently listening, restart with new language
+  if (transcription.isActive()) {
+    await transcription.stopListening();
+    await transcription.startListening({
+      onPartialResult: (text, timestamp, lang) => {
+        partialTranscript = text;
+        if (lang) detectedLanguage = lang;
+        notifyTranscriptUpdate();
+      },
+      onFinalResult: async (text, timestamp, lang) => {
+        partialTranscript = '';
+        if (lang) detectedLanguage = lang;
+        if (activeConversationId) {
+          const entryId = await kbService.addTranscriptEntry(
+            activeConversationId, 'other', text, true,
+          );
+          transcriptEntries.push({
+            id: entryId,
+            conversationId: activeConversationId,
+            speaker: 'other',
+            text,
+            timestamp: new Date().toISOString(),
+            isFinal: true,
+          });
+          notifyTranscriptUpdate();
+          await kbService.extractAndStoreEntities(activeConversationId, text);
+        }
+      },
+      onError: error => {
+        console.error('Transcription error:', error);
+        setStatus('error');
+      },
+      onStatusChange: status => {
+        if (status === 'listening') {
+          setStatus('passive_listening');
+        }
+      },
+    });
+  }
+
+  console.log('Transcription language set to:', language);
+}
+
 export async function cleanupVoiceAgent(): Promise<void> {
   try {
     await stopPassiveListening();
@@ -245,6 +318,7 @@ export async function cleanupVoiceAgent(): Promise<void> {
     statusCallbacks = [];
     transcriptCallbacks = [];
     takeoverStateCallbacks = [];
+    detectedLanguage = 'en';
     setStatus('idle');
     console.log('VoiceAgent cleaned up');
   } catch (error) {

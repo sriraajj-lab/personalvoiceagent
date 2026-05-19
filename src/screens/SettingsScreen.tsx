@@ -10,7 +10,7 @@ import {
   Alert,
   SafeAreaView,
 } from 'react-native';
-import {AppSettings} from '../types';
+import {AppSettings, TranscriptionLanguage, SupportedLanguage} from '../types';
 
 interface SettingsScreenProps {
   onBack: () => void;
@@ -182,6 +182,45 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({
               placeholderTextColor="#6c757d"
             />
           </View>
+
+          {/* Language Selection */}
+          <View style={styles.switchRow}>
+            <View style={styles.switchLabel}>
+              <Text style={styles.switchTitle}>Transcription Language</Text>
+              <Text style={styles.switchDescription}>
+                Choose transcription language or auto-detect
+              </Text>
+            </View>
+          </View>
+          <View style={styles.languageSelector}>
+            {(['auto', 'en', 'hi', 'te'] as TranscriptionLanguage[]).map(lang => {
+              const labels: Record<string, string> = {
+                auto: '🌐 Auto',
+                en: '🇺🇸 English',
+                hi: '🇮🇳 Hindi (हिंदी)',
+                te: '🇮🇳 Telugu (తెలుగు)',
+              };
+              return (
+                <TouchableOpacity
+                  key={lang}
+                  style={[
+                    styles.languageOption,
+                    localSettings.preferredLanguage === lang && styles.languageOptionActive,
+                  ]}
+                  onPress={() =>
+                    setLocalSettings(prev => ({...prev, preferredLanguage: lang}))
+                  }>
+                  <Text
+                    style={[
+                      styles.languageText,
+                      localSettings.preferredLanguage === lang && styles.languageTextActive,
+                    ]}>
+                    {labels[lang] || lang}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
         </View>
 
         {/* Data Management */}
@@ -191,7 +230,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({
             style={styles.dangerButton}
             onPress={handleClearHistory}>
             <Text style={styles.dangerButtonText}>
-              🗑 Clear All Conversation History
+              🗑️ Clear All Conversation History
             </Text>
           </TouchableOpacity>
           <Text style={styles.infoText}>
@@ -345,6 +384,34 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#ffffff',
     fontWeight: '500',
+  },
+  languageSelector: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  languageOption: {
+    backgroundColor: '#0d1117',
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: '#30363d',
+  },
+  languageOptionActive: {
+    backgroundColor: '#7C3AED',
+    borderColor: '#9F7AEA',
+  },
+  languageText: {
+    fontSize: 13,
+    color: '#cccccc',
+    fontWeight: '500',
+  },
+  languageTextActive: {
+    color: '#ffffff',
+    fontWeight: '700',
   },
 });
 

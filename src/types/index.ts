@@ -1,3 +1,6 @@
+export type SupportedLanguage = 'en' | 'hi' | 'te';
+export type TranscriptionLanguage = SupportedLanguage | 'auto';
+
 export interface Conversation {
   id: string;
   startedAt: string;
@@ -39,6 +42,7 @@ export interface AppSettings {
   passiveListeningEnabled: boolean;
   autoAnswerWorkCalls: boolean;
   triggerPhrase: string;
+  preferredLanguage: TranscriptionLanguage;
 }
 
 export interface KnowledgeEntry {

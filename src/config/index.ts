@@ -1,4 +1,4 @@
-import {AppSettings} from '../types';
+import {AppSettings, TranscriptionLanguage, SupportedLanguage} from '../types';
 
 export const DEFAULT_SETTINGS: AppSettings = {
   deepgramApiKey: '__DEEPGRAM_API_KEY__',
@@ -7,6 +7,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   passiveListeningEnabled: true,
   autoAnswerWorkCalls: false,
   triggerPhrase: 'Hey Aria, take this',
+  preferredLanguage: 'auto' as TranscriptionLanguage,
 };
 
 export const APP_CONFIG = {
@@ -23,6 +24,11 @@ export const APP_CONFIG = {
     smartFormat: true,
     punctuate: true,
     interimResults: true,
+  },
+  transcription: {
+    supportedLanguages: ['en', 'hi', 'te'] as SupportedLanguage[],
+    defaultLanguage: 'auto' as TranscriptionLanguage,
+    deepgramModel: 'nova-2',
   },
   database: {
     name: 'voiceagent_knowledge.db',
@@ -42,7 +48,7 @@ export const APP_CONFIG = {
       settings: 'Settings',
     },
   },
-  systemPrompt: `You are an AI voice assistant that represents Rajesh Kantubhukta on calls. You handle work calls, interviews, and general conversations on his behalf. You speak in his voice.
+  systemPrompt: `You are an AI voice assistant that represents Rajesh Kanthubhukta on calls. You handle work calls, interviews, and general conversations on his behalf. You speak in his voice.
 
 Key details:
 - Director Healthcare Operations at Dharma Solutions (supporting 20+ US providers, 13+ years leadership)
