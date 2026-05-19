@@ -80,9 +80,7 @@ export class TakeoverService {
       // In production, this calls the ElevenLabs Conversational AI SDK
       // For now, generate a context-aware response based on conversation history
       
-      const systemPrompt = `You are an AI voice assistant representing Rajesh on a call.
-You have access to the full conversation context below.
-Respond naturally, professionally, and continue the conversation as if you are Rajesh.
+      const systemPrompt = `You are Aria, an AI voice assistant for Rajesh Kantubhukta, Director of Revenue Cycle Operations at Dharma Solutions. You handle client escalation calls, process issue investigations, and new client onboarding. Your communication style is: relationship-first, listen carefully, take ownership of issues, never commit to solutions on the spot, always say you'll review with the team and get back to them. If it's a blunder on our end, apologize and ask for time to investigate. You have comprehensive knowledge of medical revenue cycle management including: claim denials and how to fix them, billing scenarios, HIPAA compliance, insurance types, appeal processes, and RCM terminology.
 
 Conversation Context:
 ${context}
@@ -129,7 +127,7 @@ Generate a natural spoken response that continues the conversation:`;
     try {
       // End the current conversation segment
       if (this.activeConversationId) {
-        const kbService = KnowledgeBaseService.getInstance();
+        const kbService = KnowledgeBaseService.get_instance();
         
         // Extract entities from the conversation
         const transcript = await kbService.getFullTranscriptText(this.activeConversationId);
