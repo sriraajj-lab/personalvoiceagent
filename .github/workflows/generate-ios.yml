@@ -18,45 +18,20 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '18'
       
       - name: Install dependencies
-        run: npm install
+        run: npm ci
       
-      - name: Create temporary RN project
-        run: |
-          npx @react-native-community/cli init TempApp --version 0.73.6 --skip-install
+      - name: Expo prebuild (generate iOS directory)
+        run: npx expo prebuild --platform ios
       
-      - name: Copy iOS directory to repo root
-        run: |
-          rm -rf ios
-          cp -R TempApp/ios ./
-      
-      - name: Rename project references from TempApp to PersonalVoiceAgent
-        run: |
-          mv ios/TempApp ios/PersonalVoiceAgent
-          mv ios/TempApp.xcodeproj ios/PersonalVoiceAgent.xcodeproj
-          mv ios/TempApp.xcworkspace ios/PersonalVoiceAgent.xcworkspace 2>/dev/null || true
-          mv ios/TempAppTests ios/PersonalVoiceAgentTests 2>/dev/null || true
-          mv ios/TempAppUITests ios/PersonalVoiceAgentUITests 2>/dev/null || true
-          sed -i '' 's/TempApp/PersonalVoiceAgent/g' ios/Podfile
-          sed -i '' 's/TempApp/PersonalVoiceAgent/g' ios/PersonalVoiceAgent.xcodeproj/project.pbxproj
-          sed -i '' 's/TempApp/PersonalVoiceAgent/g' ios/PersonalVoiceAgent/Info.plist
-          if [ -d ios/PersonalVoiceAgent.xcodeproj/xcshareddata/xcschemes ]; then
-            for f in ios/PersonalVoiceAgent.xcodeproj/xcshareddata/xcschemes/*.xcscheme; do
-              mv "$f" "$(echo $f | sed 's/TempApp/PersonalVoiceAgent/g')" 2>/dev/null || true
-            done
-          fi
-      
-      - name: Remove temp project
-        run: rm -rf TempApp
-      
-      - name: Commit and push iOS directory
+      - name: Commit and push generated iOS directory
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add ios/ package-lock.json
-          git commit -m "ci: generate ios native project directory" || echo "No changes to commit"
+          git commit -m "ci: generate ios native project directory via expo prebuild" || echo "No changes to commit"
           git fetch origin main
           git rebase origin/main || true
           git push origin HEAD:main --force-with-lease
