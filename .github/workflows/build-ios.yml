@@ -1,0 +1,90 @@
+name: Build iOS IPA
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'ios/**'
+      - 'src/**'
+  workflow_dispatch:
+
+jobs:
+  build-ios:
+    runs-on: macos-latest
+    
+    steps:
+      - name: Checkout with submodules
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install npm dependencies
+        run: npm install
+      
+      - name: Install CocoaPods
+        run: |
+          gem install cocoapods -v 1.14.3
+      
+      - name: Install Pods
+        working-directory: ios
+        run: pod install
+      
+      - name: Build unsigned archive
+        run: |
+          cd ios
+          xcodebuild archive \
+            -workspace PersonalVoiceAgent.xcworkspace \
+            -scheme PersonalVoiceAgent \
+            -configuration Release \
+            -sdk iphoneos \
+            -archivePath ${{ runner.temp }}/PersonalVoiceAgent.xcarchive \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            DEVELOPMENT_TEAM="" \
+            PROVISIONING_PROFILE_SPECIFIER="" \
+            AUTOMATIC_CODE_SIGNING=NO
+      
+      - name: Export unsigned IPA
+        run: |
+          mkdir -p ${{ runner.temp }}/export
+          cat > ${{ runner.temp }}/export/export.plist << EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>method</key>
+    <string>development</string>
+    <key>signingStyle</key>
+    <string>manual</string>
+    <key>stripSwiftSymbols</key>
+    <true/>
+    <key>teamID</key>
+    <string></string>
+    <key>uploadBitcode</key>
+    <false/>
+    <key>uploadSymbols</key>
+    <false/>
+</dict>
+</plist>
+EOF
+          xcodebuild -exportArchive \
+            -archivePath ${{ runner.temp }}/PersonalVoiceAgent.xcarchive \
+            -exportPath ${{ runner.temp }}/IPA \
+            -exportOptionsPlist ${{ runner.temp }}/export/export.plist \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO
+      
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: VoiceAgent-${{ github.sha }}.ipa
+          path: ${{ runner.temp }}/IPA/*.ipa
+          if-no-files-found: error

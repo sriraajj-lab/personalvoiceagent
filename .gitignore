@@ -15,3 +15,16 @@ web-build/
 
 # Env
 .env*
+
+# iOS Native
+ios/Pods/
+ios/build/
+ios/*.xcworkspace/xcuserdata/
+ios/Podfile.lock
+
+# iOS Build Artifacts
+*.ipa
+*.xcarchive
+*.dSYM.zip
+*.dSYM
+DerivedData/

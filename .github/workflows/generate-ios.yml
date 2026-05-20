@@ -1,0 +1,68 @@
+name: Generate iOS Native Directory
+
+on:
+  workflow_dispatch:
+
+jobs:
+  generate-ios:
+    runs-on: macos-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm install
+      
+      - name: Create temporary RN project
+        run: |
+          npx @react-native-community/cli init TempApp --version 0.73.6 --skip-install
+      
+      - name: Copy iOS directory to repo root
+        run: |
+          rm -rf ios
+          cp -R TempApp/ios ./
+      
+      - name: Rename project references from TempApp to PersonalVoiceAgent
+        run: |
+          # Rename directories
+          mv ios/TempApp ios/PersonalVoiceAgent
+          mv ios/TempApp.xcodeproj ios/PersonalVoiceAgent.xcodeproj
+          mv ios/TempApp.xcworkspace ios/PersonalVoiceAgent.xcworkspace 2>/dev/null || true
+          mv ios/TempAppTests ios/PersonalVoiceAgentTests 2>/dev/null || true
+          mv ios/TempAppUITests ios/PersonalVoiceAgentUITests 2>/dev/null || true
+          
+          # Update Podfile
+          sed -i '' 's/TempApp/PersonalVoiceAgent/g' ios/Podfile
+          
+          # Update pbxproj references
+          sed -i '' 's/TempApp/PersonalVoiceAgent/g' ios/PersonalVoiceAgent.xcodeproj/project.pbxproj
+          
+          # Update Info.plist bundle name
+          sed -i '' 's/TempApp/PersonalVoiceAgent/g' ios/PersonalVoiceAgent/Info.plist
+          
+          # Update scheme
+          if [ -d ios/PersonalVoiceAgent.xcodeproj/xcshareddata/xcschemes ]; then
+            for f in ios/PersonalVoiceAgent.xcodeproj/xcshareddata/xcschemes/*.xcscheme; do
+              mv "$f" "$(echo $f | sed 's/TempApp/PersonalVoiceAgent/g')" 2>/dev/null || true
+            done
+          fi
+      
+      - name: Remove temp project
+        run: rm -rf TempApp
+      
+      - name: Commit iOS directory
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add ios/
+          git commit -m "ci: generate ios native project directory" || echo "No changes to commit"
+          git push
